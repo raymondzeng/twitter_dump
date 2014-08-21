@@ -49,30 +49,65 @@ def get_all_tweets(tweepy_api, screen_name):
         # update the id of the oldest tweet less one
         oldest = alltweets[-1].id - 1
         print "...%s tweets downloaded" % (len(alltweets))
-        time.sleep(60)
+        
+        # commented out for testing; uncomment when actually running
+        # to prevent rate limit
+        # time.sleep(60)
 
     # create list to be serialized
-    outtweets = [{"author_id": tweet.author.id,
-                  "author_name": tweet.author.screen_name,
-                  "tweet_id": tweet.id_str, 
-                  "created_at": tweet.created_at.isoformat(), 
-                  "lang": tweet.lang,
-                  "text": tweet.text.encode("utf-8"),
-                  "favorite_count": tweet.favorite_count,
-                  "retweet_count": tweet.retweet_count,
-                  "replay_status_id": tweet.in_reply_to_status_id,
-                  "reply_user_id": tweet.in_reply_to_user_id,
-                  "reply_user_name": tweet.in_reply_to_screen_name,
-                  "coordinates": tweet.coordinates,
-                  "place_country_code": tweet.place.country_code if tweet.place else None,
-                  "place_full_name": tweet.place.full_name if tweet.place else None,
-                  "place_bounding_box": tweet.place.bounding_box.coordinates if tweet.place else None,
-                  "place_id": tweet.place.id if tweet.place else None,
-                  "place_type": tweet.place.place_type if tweet.place else None,
-                  "place_attributes": tweet.place.attributes if tweet.place else None,
-                  "entities": tweet.entities,
-                  "source": tweet.source} for tweet in alltweets]
+    # outtweets = [{"author_id": tweet.author.id,
+    #               "author_name": tweet.author.screen_name,
+    #               "tweet_id": tweet.id_str, 
+    #               "created_at": tweet.created_at.isoformat(), 
+    #               "lang": tweet.lang,
+    #               "text": tweet.text.encode("utf-8"),
+    #               "favorite_count": tweet.favorite_count,
+    #               "retweet_count": tweet.retweet_count,
+    #               "replay_status_id": tweet.in_reply_to_status_id,
+    #               "reply_user_id": tweet.in_reply_to_user_id,
+    #               "reply_user_name": tweet.in_reply_to_screen_name,
+    #               "coordinates": tweet.coordinates,
+    #               "entities": tweet.entities,
+    #               "source": tweet.source,
+    #               "place_country_code": tweet.place.country_code if tweet.place else None,
+    #               "place_full_name": tweet.place.full_name if tweet.place else None,
+    #               "place_bounding_box": tweet.place.bounding_box.coordinates if tweet.place else None,
+    #               "place_id": tweet.place.id if tweet.place else None,
+    #               "place_type": tweet.place.place_type if tweet.place else None,
+    #               "place_attributes": tweet.place.attributes if tweet.place else None,
+    #           } for tweet in alltweets]
     
+    outtweets = []
+    for tweet in alltweets:
+        tweet_json = {
+            "author_id": tweet.author.id,
+            "author_name": tweet.author.screen_name,
+            "tweet_id": tweet.id_str, 
+            "created_at": tweet.created_at.isoformat(), 
+            "lang": tweet.lang,
+            "text": tweet.text.encode("utf-8"),
+            "favorite_count": tweet.favorite_count,
+            "retweet_count": tweet.retweet_count,
+            "replay_status_id": tweet.in_reply_to_status_id,
+            "reply_user_id": tweet.in_reply_to_user_id,
+            "reply_user_name": tweet.in_reply_to_screen_name,
+            "coordinates": tweet.coordinates,
+            "entities": tweet.entities,
+            "source": tweet.source
+        }
+
+        if tweet.place:
+            tweet_json.update({
+                "place_country_code": tweet.place.country_code,
+                "place_full_name": tweet.place.full_name,
+                "place_bounding_box": tweet.place.bounding_box.coordinates,
+                "place_id": tweet.place.id,
+                "place_type": tweet.place.place_type,
+                "place_attributes": tweet.place.attributes
+            })
+
+        outtweets.append(tweet_json)
+
     # dump it to json file
     out = "dumps/%s_tweet_dump.json"
     with open(out % screen_name, 'wb') as f:
@@ -89,7 +124,7 @@ def get_network_tweets(api, screen_name):
         print "Didn't get all friends: ", len(friends), "/", user.friends_count
 
     # do this instead once rate limit figured out
-    # appears to be either 30 requests every 15 mintutes
+    # appears to be 30 requests every 15 mintutes
     # for friend in tweepy.Cursor(api.friends, screen_name, count=200): 
     for friend in friends:
         print "Getting tweets for: ", friend.screen_name
@@ -97,6 +132,7 @@ def get_network_tweets(api, screen_name):
 
 def authenticate(user_access=False):
     # authorize twitter, initialize tweepy
+    # returns a tweepy api instance
     auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
     if user_access:
         auth.set_access_token(access_key, access_secret)
@@ -104,4 +140,7 @@ def authenticate(user_access=False):
 
 if __name__ == '__main__':
     api = authenticate()
-    get_network_tweets(api, "_raymondzeng")
+    try:
+        get_network_tweets(api, "_raymondzeng")
+    except KeyboardInterrupt:
+        pass
